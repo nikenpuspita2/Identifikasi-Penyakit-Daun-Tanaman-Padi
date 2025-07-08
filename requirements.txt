@@ -1,5 +1,10 @@
 flask
 tensorflow
+keras
 numpy
-pillow
+pandas
+imutils
+scikit-learn
+matplotlib
+seaborn
 opencv-python
