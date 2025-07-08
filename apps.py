@@ -12,6 +12,7 @@ from tensorflow import keras
 from skimage import transform, io
 import numpy as np
 import os
+import requests
 from PIL import Image
 from datetime import datetime
 from keras.preprocessing import image
@@ -20,7 +21,18 @@ from flask_cors import CORS
 app = Flask(__name__)
 
 
-modelxception = load_model("Xception.h5")
+MODEL_URL = 'https://drive.google.com/uc?export=download&id=1-VGqY-wKfAT2ax4Qm_-KjYxfnB-PlIfq'
+MODEL_PATH = 'Xception.h5'
+
+if not os.path.exists(MODEL_PATH):
+    print("Model belum ditemukan. Mengunduh dari Google Drive...")
+    r = requests.get(MODEL_URL, allow_redirects=True)
+    with open(MODEL_PATH, 'wb') as f:
+        f.write(r.content)
+    print("Model berhasil diunduh.")
+
+# load model setelah dipastikan ada
+modelxception = load_model(MODEL_PATH)
 
 
 UPLOAD_FOLDER = 'static/uploads/'
@@ -95,6 +107,6 @@ def predict():
                         confidenceexception = '{:2.0f}%'.format(100 * np.max(prediction_array_xception)),
                         )
 
-if __name__ =='__main__':
-	#app.debug = True
-	app.run(debug = True)
+if __name__ == '__main__':
+    import os
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
