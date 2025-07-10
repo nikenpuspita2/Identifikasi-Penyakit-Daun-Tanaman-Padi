@@ -102,7 +102,6 @@ def predict():
         'prevention': '<ul><li>Gunakan benih bersertifikat tahan BLB.</li><li>Sanitasi lahan dan alat pertanian.</li><li>Rotasi tanaman dengan non-padi.</li></ul>',
         'reference': '''
             <ul>
-                <li><a href="https://www.pertanianku.com/mengenal-penyakit-blb/" target="_blank">Pertanianku - Penyakit BLB</a></li>
                 <li><a href="http://www.knowledgebank.irri.org/decision-tools/rice-doctor/rice-doctor-fact-sheets/item/bacterial-blight" target="_blank">IRRI - Bacterial Blight</a></li>
             </ul>
         '''
@@ -114,8 +113,7 @@ def predict():
         'prevention': '<ul><li>Gunakan varietas tahan penyakit.</li><li>Buang dan bakar daun terinfeksi.</li><li>Semprot fungisida sistemik jika diperlukan.</li></ul>',
         'reference': '''
             <ul>
-                <li><a href="https://www.cabi.org/isc/datasheet/23469" target="_blank">CABI - Leaf smut</a></li>
-                <li><a href="https://www.knowledgebank.irri.org/decision-tools/rice-doctor/rice-doctor-fact-sheets/item/leaf-smut" target="_blank">IRRI - Leaf Smut</a></li>
+                <li><a href="https://www.gardeningknowhow.com/edible/grains/rice/how-to-treat-leaf-smut-of-rice.htm" target="_blank">Gardening Know How - Leaf smut</a></li>
             </ul>
         '''
     }
