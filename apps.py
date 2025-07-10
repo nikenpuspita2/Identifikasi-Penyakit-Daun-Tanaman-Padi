@@ -20,92 +20,110 @@ from flask_cors import CORS
 
 app = Flask(__name__)
 
+# Load model Xception
+modelxception = load_model("Xception.h5")
 
-MODEL_URL = 'https://drive.google.com/uc?export=download&id=1-VGqY-wKfAT2ax4Qm_-KjYxfnB-PlIfq'
-MODEL_PATH = 'Xception.h5'
-
-if not os.path.exists(MODEL_PATH):
-    print("Model belum ditemukan. Mengunduh dari Google Drive...")
-    r = requests.get(MODEL_URL, allow_redirects=True)
-    with open(MODEL_PATH, 'wb') as f:
-        f.write(r.content)
-    print("Model berhasil diunduh.")
-
-# load model setelah dipastikan ada
-modelxception = load_model(MODEL_PATH)
-
-
+# Konfigurasi folder upload
 UPLOAD_FOLDER = 'static/uploads/'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Tipe file yang diperbolehkan
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'tiff', 'webp', 'jfif'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# routes
-@app.route("/", methods=['GET', 'POST'])
+@app.route("/")
 def main():
-	return render_template("cnn.html")
+    return render_template("cnn.html")
 
-@app.route("/classification", methods = ['GET', 'POST'])
+@app.route("/classification")
 def classification():
-	return render_template("classifications.html")
+    return render_template("classifications.html")
 
 @app.route('/submit', methods=['POST'])
 def predict():
     if 'file' not in request.files:
-        resp = jsonify({'message': 'No image in the request'})
-        resp.status_code = 400
-        return resp
-    files = request.files.getlist('file')
-    filename = "temp_image.png"
-    errors = {}
-    success = False
-    for file in files:
-        if file and allowed_file(file.filename):
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            success = True
-        else:
-            errors["message"] = 'File type of {} is not allowed'.format(file.filename)
+        return jsonify({'message': 'No image in the request'}), 400
 
-    if not success:
-        resp = jsonify(errors)
-        resp.status_code = 400
-        return resp
-    img_url = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    file = request.files['file']
+    if not file or not allowed_file(file.filename):
+        return jsonify({'message': 'Invalid file type'}), 400
 
-    # convert image to RGB
-    img = Image.open(img_url).convert('RGB')
-    now = datetime.now()
-    predict_image_path = 'static/uploads/' + now.strftime("%d%m%y-%H%M%S") + ".png"
-    image_predict = predict_image_path
-    img.convert('RGB').save(image_predict, format="png")
-    img.close()
+    # Simpan file dengan timestamp unik
+    timestamp = datetime.now().strftime("%d%m%y-%H%M%S")
+    filename = f"{timestamp}.png"
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
 
-    # prepare image for prediction
-    img = image.load_img(predict_image_path, target_size=(128, 128, 3))
-    x = image.img_to_array(img)
-    x = x/127.5-1 
+    img = Image.open(file).convert('RGB')
+    img.save(filepath)
+
+    # Preprocessing untuk model
+    img = image.load_img(filepath, target_size=(128, 128))
+    x = image.img_to_array(img) / 127.5 - 1
     x = np.expand_dims(x, axis=0)
-    images = np.vstack([x])
 
-
-    prediction_array_xception = modelxception.predict(images)
-
-    # prepare api response
+    # Prediksi
+    prediction = modelxception.predict(x)
     class_names = ['Bacterial leaf blight', 'Brown spot', 'Leaf smut']
-    # result = {
-    #     "filename" : predict_image_path,
-    #     "prediction": class_names[np.argmax(prediction_array)],
-    #     "confidence": '{:2.0f}%'.format(100 * np.max(prediction_array))
-    # }
-	
-    return render_template("classifications.html", img_path = predict_image_path, 
-                        predictionxception = class_names[np.argmax(prediction_array_xception)],
-                        confidenceexception = '{:2.0f}%'.format(100 * np.max(prediction_array_xception)),
-                        )
+    predicted_class = class_names[np.argmax(prediction)]
+    confidence = '{:.0f}%'.format(100 * np.max(prediction))
+
+    # Informasi klasifikasi
+    info = {
+    'Brown spot': {
+        'description': 'Brown spot adalah penyakit penting pada padi yang disebabkan oleh jamur <i>Bipolaris oryzae</i>.',
+        'symptoms': '<ul><li>Bercak berwarna cokelat kehitaman di daun.</li><li>Daun mengering dan tanaman tampak lemah.</li></ul>',
+        'causes': '<ul><li>Jamur Bipolaris oryzae berkembang pada kelembapan tinggi.</li><li>Tanaman kekurangan kalium atau kelebihan nitrogen lebih rentan.</li></ul>',
+        'prevention': '<ul><li>Gunakan varietas tahan penyakit.</li><li>Lakukan rotasi tanaman dan sanitasi lahan.</li><li>Gunakan fungisida berbahan aktif seperti mancozeb.</li></ul>',
+        'reference': '''
+            <ul>
+                <li><a href="https://plantix.net/id/library/plant-diseases/100064/brown-spot-of-rice/" target="_blank">Plantix - Brown Spot of Rice</a></li>
+                <li><a href="https://en.wikipedia.org/wiki/Cochliobolus_miyabeanus" target="_blank">Wikipedia - Cochliobolus miyabeanus</a></li>
+            </ul>
+        '''
+    },
+    'Bacterial leaf blight': {
+        'description': 'Bacterial leaf blight disebabkan oleh bakteri <i>Xanthomonas oryzae</i> dan menyebar cepat saat musim hujan.',
+        'symptoms': '<ul><li>Ujung daun menguning lalu menyebar ke seluruh daun.</li><li>Daun tampak kering seperti terbakar.</li></ul>',
+        'causes': '<ul><li>Bakteri masuk melalui luka daun atau alat pertanian kotor.</li><li>Kelembaban tinggi dan angin mempercepat penyebaran.</li></ul>',
+        'prevention': '<ul><li>Gunakan benih bersertifikat tahan BLB.</li><li>Sanitasi lahan dan alat pertanian.</li><li>Rotasi tanaman dengan non-padi.</li></ul>',
+        'reference': '''
+            <ul>
+                <li><a href="https://www.pertanianku.com/mengenal-penyakit-blb/" target="_blank">Pertanianku - Penyakit BLB</a></li>
+                <li><a href="http://www.knowledgebank.irri.org/decision-tools/rice-doctor/rice-doctor-fact-sheets/item/bacterial-blight" target="_blank">IRRI - Bacterial Blight</a></li>
+            </ul>
+        '''
+    },
+    'Leaf smut': {
+        'description': 'Leaf smut disebabkan oleh jamur <i>Entyloma oryzae</i> yang menyebabkan bercak hitam pada daun.',
+        'symptoms': '<ul><li>Bercak kecil lonjong berwarna gelap pada daun.</li><li>Bercak bisa menyatu dan menyebabkan daun mati.</li></ul>',
+        'causes': '<ul><li>Jamur menyebar lewat angin dan cipratan air hujan.</li><li>Sering terjadi pada kondisi lembap dan suhu tinggi.</li></ul>',
+        'prevention': '<ul><li>Gunakan varietas tahan penyakit.</li><li>Buang dan bakar daun terinfeksi.</li><li>Semprot fungisida sistemik jika diperlukan.</li></ul>',
+        'reference': '''
+            <ul>
+                <li><a href="https://www.cabi.org/isc/datasheet/23469" target="_blank">CABI - Leaf smut</a></li>
+                <li><a href="https://www.knowledgebank.irri.org/decision-tools/rice-doctor/rice-doctor-fact-sheets/item/leaf-smut" target="_blank">IRRI - Leaf Smut</a></li>
+            </ul>
+        '''
+    }
+}
+
+
+    selected_info = info[predicted_class]
+
+    return render_template("classifications.html",
+        img_path=filepath,
+        predictionxception=predicted_class,
+        confidenceexception=confidence,
+        descriptionxception=selected_info['description'],
+        symptomsxception=selected_info['symptoms'],
+        causesxception=selected_info['causes'],
+        preventionxception=selected_info['prevention'],
+        referencesxception=selected_info['reference']
+    )
 
 if __name__ == '__main__':
     import os
