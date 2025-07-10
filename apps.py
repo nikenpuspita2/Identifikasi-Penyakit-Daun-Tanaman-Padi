@@ -21,7 +21,17 @@ from flask_cors import CORS
 app = Flask(__name__)
 
 # Load model Xception
-modelxception = load_model("Xception.h5")
+MODEL_URL = 'https://drive.google.com/uc?export=download&id=1-VGqY-wKfAT2ax4Qm_-KjYxfnB-PlIfq'
+MODEL_PATH = 'Xception.h5'
+
+if not os.path.exists(MODEL_PATH):
+    print("Model belum ditemukan. Mengunduh dari Google Drive...")
+    r = requests.get(MODEL_URL, allow_redirects=True)
+    with open(MODEL_PATH, 'wb') as f:
+        f.write(r.content)
+    print("Model berhasil diunduh.")
+
+modelxception = load_model(MODEL_PATH)
 
 # Konfigurasi folder upload
 UPLOAD_FOLDER = 'static/uploads/'
